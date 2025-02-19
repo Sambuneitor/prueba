@@ -83,7 +83,7 @@ main {
     background-color: var(--primary-color);
     color: var(--white);
     padding: 2rem;
-    width: 300px;
+    width: 400px;
     display: flex;
     align-items: center;
     justify-content: center;
