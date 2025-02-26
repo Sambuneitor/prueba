@@ -33,6 +33,14 @@ document.addEventListener('DOMContentLoaded', () => {
             category: 'alcancias',
             image: 'placeholder.jpg',
             description: 'Alcancía de diseño contemporáneo'
+        },
+        {
+            id: 5, // Corregido el ID duplicado
+            name: 'Alcancía Decorativa',
+            price: 32000,
+            category: 'alcancias',
+            image: 'placeholder.jpg',
+            description: 'Alcancía con diseños decorativos'
         }
     ];
 
@@ -70,13 +78,26 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateCartUI() {
         const cartBtn = document.querySelector('.cart-btn');
         const totalItems = cart.reduce((sum, item) => sum + item.quantity, 0);
-        const totalPrice = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        cartBtn.textContent = `Carrito (${totalItems})`;
         
-        // Update cart modal if it exists
-        const cartModal = document.getElementById('cartModal');
-        if (cartModal) {
-            updateCartModal();
+        // Actualizar el contador en el botón
+        const counterSpan = cartBtn.querySelector('.counter');
+        if (totalItems > 0) {
+            if (counterSpan) {
+                counterSpan.textContent = totalItems;
+            } else {
+                const span = document.createElement('span');
+                span.className = 'counter';
+                span.textContent = totalItems;
+                cartBtn.appendChild(span);
+            }
+        } else {
+            counterSpan?.remove();
+        }
+        
+        // Actualizar el menú del carrito si está visible
+        const cartMenu = document.getElementById('cartMenu');
+        if (cartMenu && cartMenu.style.display === 'block') {
+            updateCartMenu();
         }
     }
 
@@ -91,47 +112,55 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 2000);
     }
 
-    // Cart Modal
-    function createCartModal() {
-        const modal = document.createElement('div');
-        modal.id = 'cartModal';
-        modal.className = 'modal';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <span class="close">&times;</span>
-                <h2>Carrito de Compras</h2>
+    // Cart Menu Functions
+    function createCartMenu() {
+        const overlay = document.createElement('div');
+        overlay.className = 'cart-overlay';
+        document.body.appendChild(overlay);
+    
+        const menu = document.createElement('div');
+        menu.id = 'cartMenu';
+        menu.className = 'cart-menu';
+        menu.innerHTML = `
+            <div class="cart-menu-content">
+                <div class="cart-menu-header">
+                    <h2>Carrito de Compras</h2>
+                    <button class="close-cart">&times;</button>
+                </div>
                 <div class="cart-items"></div>
                 <div class="cart-total"></div>
                 <button class="checkout-btn">Proceder al Pago</button>
             </div>
         `;
-        document.body.appendChild(modal);
-
-        // Close button functionality
-        const closeBtn = modal.querySelector('.close');
-        closeBtn.onclick = () => modal.style.display = 'none';
-
-        // Close modal when clicking outside
-        window.onclick = (event) => {
-            if (event.target === modal) {
-                modal.style.display = 'none';
-            }
-        }
-
-        return modal;
+        document.body.appendChild(menu);
+    
+        overlay.addEventListener('click', closeCartMenu);
+        menu.querySelector('.close-cart').addEventListener('click', closeCartMenu);
+    
+        return menu;
     }
-
-    function updateCartModal() {
-        const modal = document.getElementById('cartModal') || createCartModal();
-        const cartItems = modal.querySelector('.cart-items');
-        const cartTotal = modal.querySelector('.cart-total');
-
+    
+    function updateCartMenu() {
+        const menu = document.getElementById('cartMenu') || createCartMenu();
+        const cartItems = menu.querySelector('.cart-items');
+        const cartTotal = menu.querySelector('.cart-total');
+    
+        if (cart.length === 0) {
+            cartItems.innerHTML = `
+                <div class="empty-cart-message">
+                    Tu carrito está vacío
+                </div>
+            `;
+            cartTotal.innerHTML = '';
+            return;
+        }
+    
         cartItems.innerHTML = cart.map(item => `
             <div class="cart-item">
-                <img src="${item.product.image}" alt="${item.product.name}" width="50">
+                <img src="${item.product.image}" alt="${item.product.name}">
                 <div class="cart-item-details">
                     <h3>${item.product.name}</h3>
-                    <p>$${item.product.price.toLocaleString()} x ${item.quantity}</p>
+                    <p>$${item.product.price.toLocaleString()}</p>
                 </div>
                 <div class="cart-item-actions">
                     <button onclick="removeFromCart(${item.product.id})">-</button>
@@ -140,9 +169,33 @@ document.addEventListener('DOMContentLoaded', () => {
                 </div>
             </div>
         `).join('');
-
+    
         const total = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
-        cartTotal.innerHTML = `<h3>Total: $${total.toLocaleString()}</h3>`;
+        cartTotal.innerHTML = `
+            <h3>Total: $${total.toLocaleString()}</h3>
+        `;
+    }
+    
+    function toggleCartMenu() {
+        const menu = document.getElementById('cartMenu') || createCartMenu();
+        const overlay = document.querySelector('.cart-overlay');
+        
+        if (menu.style.display === 'block') {
+            closeCartMenu();
+        } else {
+            menu.style.display = 'block';
+            overlay.style.display = 'block';
+            updateCartMenu();
+        }
+    }
+    
+    function closeCartMenu() {
+        const menu = document.getElementById('cartMenu');
+        const overlay = document.querySelector('.cart-overlay');
+        if (menu) {
+            menu.style.display = 'none';
+            overlay.style.display = 'none';
+        }
     }
 
     // Search functionality
@@ -174,12 +227,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         let filtered = [...products];
         
-        // Apply category filter
         if (activeCategory && activeCategory !== 'todos') {
             filtered = filtered.filter(p => p.category === activeCategory);
         }
         
-        // Apply search filter
         if (searchTerm) {
             filtered = filtered.filter(p => 
                 p.name.toLowerCase().includes(searchTerm) ||
@@ -195,7 +246,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderProducts(productsToRender = products) {
         const productsGrid = document.querySelector('.products-grid');
         productsGrid.innerHTML = '';
-
+    
         productsToRender.forEach(product => {
             const productElement = document.createElement('div');
             productElement.className = 'product';
@@ -212,10 +263,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialize cart button click handler
     const cartBtn = document.querySelector('.cart-btn');
-    cartBtn.addEventListener('click', () => {
-        const modal = document.getElementById('cartModal') || createCartModal();
-        updateCartModal();
-        modal.style.display = 'block';
+    cartBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleCartMenu();
     });
 
     // Make functions available globally
@@ -225,3 +275,16 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial render
     renderProducts();
 });
+
+ document.querySelectorAll('.buy-btn').forEach(button => {
+        button.addEventListener('click', (event) => {
+            const productId = parseInt(event.target.getAttribute('data-id'), 10);
+            if (!isNaN(productId)) {
+                addToCart(productId);
+                console.log(`Producto ${productId} agregado al carrito.`);
+            } else {
+                console.error("Error: No se pudo obtener el ID del producto.");
+            }
+        });
+    });
+
